@@ -62,6 +62,8 @@ Now the file structure should look like this:
 ├─ screensaver/
 ```
 
+From now on, `.adds/screensaver/` is the new location for your screensavers. Don't place them in `.kobo/screensaver` anymore.
+
 # How to uninstall  
 To uninstall Nickel Screensaver, put a file named `uninstall` in the `.adds/screensaver` folder.
 
