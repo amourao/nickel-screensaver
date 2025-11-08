@@ -62,13 +62,18 @@ NickelHook(
     .uninstall = &ns_uninstall,
 );
 
+QString pick_random_file(QDir dir, QStringList files) {
+    int idx = qrand() % files.size();
+    return dir.filePath(files.at(idx));
+}
+
 extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWorkflowManager *_this) {
     QString ns_path   = "/mnt/onboard/.adds/screensaver";
     QString kobo_path = "/mnt/onboard/.kobo/screensaver";
-    QDir ns_dir(ns_path);
-    QDir kobo_dir(kobo_path);
+    QDir screensaver_dir(ns_path);
+    QDir kobo_screensaver_dir(kobo_path);
 
-    if (!kobo_dir.exists()) {
+    if (!kobo_screensaver_dir.exists()) {
         // Skip if Kobo's screensaver folder doesn't exist
         return N3PowerWorkflowManager_handleSleep(_this);
     }
@@ -89,22 +94,25 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
 
     current_view_name = current_view->objectName();
     // Enable transparent mode when reading
-    bool transparent_mode = current_view_name == QStringLiteral("ReadingView");
+    bool is_reading = current_view_name == QStringLiteral("ReadingView");
+    bool transparent_mode = is_reading;
+    // Seed qrand
+    qsrand(QTime::currentTime().msec());
 
     // 1. Check NS's folder
-    if (!ns_dir.exists()) {
+    if (!screensaver_dir.exists()) {
         // Create empty screensaver folder
-        ns_dir.mkpath(".");
+        screensaver_dir.mkpath(".");
     }
 
-    // 2. Move old files from .kobo/screensaver to .adds/screensaver
+    // 2. Move old overlay_files from .kobo/screensaver to .adds/screensaver
     QStringList exclude = {
         "_config.ini",
         "nickel-screensaver.png",
         "nickel-screensaver.jpg",
     };
-    for (const QFileInfo &file : kobo_dir.entryInfoList(QDir::Files)) {
-        // Don't move Nickel Screensaver's files
+    for (const QFileInfo &file : kobo_screensaver_dir.entryInfoList(QDir::Files)) {
+        // Don't move Nickel Screensaver's overlay_files
         if (exclude.contains(file.fileName())) {
             continue;
         }
@@ -117,63 +125,89 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
     }
 
     // 3. Empty .kobo/screensaver folder
-    kobo_dir.removeRecursively();
-    kobo_dir.mkpath(".");
+    kobo_screensaver_dir.removeRecursively();
+    kobo_screensaver_dir.mkpath(".");
 
     // 4. Pick a random screensaver
-    QStringList files;
-    // Only accept PNG files in transparent mode
-    if (transparent_mode) {
-        files = ns_dir.entryList(QStringList() << "*.png", QDir::Files);
+    QStringList overlay_files;
+    QPixmap wallpaper;
 
-        // If there is no PNG files -> check for JPG files, and switch to non-transparent mode
-        if (files.isEmpty()) {
-            files = ns_dir.entryList(QStringList() << "*.jpg", QDir::Files);
+    if (is_reading) {
+        // Check for PNG overlay_files first
+        overlay_files = screensaver_dir.entryList(QStringList() << "*.png", QDir::Files);
+        // If there is no PNG overlay_files -> check for JPG overlay_files, and switch to non-transparent mode
+        if (overlay_files.isEmpty()) {
+            overlay_files = screensaver_dir.entryList(QStringList() << "*.jpg", QDir::Files);
             transparent_mode = false;
         }
     } else {
-        files = ns_dir.entryList(QStringList() << "*.png" << "*.jpg", QDir::Files);
+        overlay_files = screensaver_dir.entryList(QStringList() << "*.png" << "*.jpg", QDir::Files);
     }
 
-    if (files.isEmpty()) {
-        // Skip if no files found
+    if (overlay_files.isEmpty()) {
+        // Skip if no overlay_files found
         return N3PowerWorkflowManager_handleSleep(_this);
     }
 
-    // Seed qrand
-    qsrand(QTime::currentTime().msec());
-    int idx = qrand() % files.size();
-    QString random_file = ns_dir.filePath(files.at(idx));
+    if (!is_reading) {
+        // Check wallpaper folder
+        QDir wallpaper_dir("/mnt/onboard/.adds/screensaver/wallpaper");
+        if (wallpaper_dir.exists()) {
+            QStringList wallpaper_files = wallpaper_dir.entryList(QStringList() << "*.png" << "*.jpg", QDir::Files);
+            if (wallpaper_files.isEmpty()) {
+                transparent_mode = false;
+            } else {
+                transparent_mode = true;
+                QString file = pick_random_file(wallpaper_dir, wallpaper_files);
+                wallpaper.load(file);
+            }
+        }
+    }
+
+    QString overlay_file = pick_random_file(screensaver_dir, overlay_files);
 
     // If not transparent mode -> copy the file to .kobo/screensaver
     if (!transparent_mode) {
-        QFileInfo info(random_file);
-        QFile::copy(random_file, kobo_path + "/nickel-screensaver." + info.suffix());
+        QFileInfo info(overlay_file);
+        QFile::copy(overlay_file, kobo_path + "/nickel-screensaver." + info.suffix());
         N3PowerWorkflowManager_handleSleep(_this);
         return;
     }
 
-    // Handle transparent mode
-    // 5. Take screenshot of the current screen
+    // 5. Handle transparent mode
     QDesktopWidget* desktopWidget = QApplication::desktop();
-    QRect geometry = current_view->geometry();
     QScreen* screen = QGuiApplication::primaryScreen();
-    QPixmap screenshot = screen->grabWindow(
-        desktopWidget->winId(),
-        geometry.left(),
-        geometry.top(),
-        geometry.width(),
-        geometry.height()
-    );
+    QSize screen_size = screen->size();
 
-    // 6. Combine
-    QPixmap overlay(random_file);
-    QImage result(screenshot.size(), QImage::Format_RGB32);
+    if (is_reading) {
+        // Take screenshot of the current screen if reading
+        QRect geometry = current_view->geometry();
+        wallpaper = screen->grabWindow(
+            desktopWidget->winId(),
+            geometry.left(),
+            geometry.top(),
+            geometry.width(),
+            geometry.height()
+        );
+    }
+
+    // 6. Combine overlay & wallpaper
+    QPixmap overlay(overlay_file);
+    QImage result(screen_size, QImage::Format_RGB32);
     QPainter painter(&result);
-    painter.drawPixmap(0, 0, screenshot);
-    if (overlay.size() != screenshot.size()) {
+
+    // Draw wallpaper
+    if (wallpaper.size() != screen_size) {
         // Only scales if different sizes
-        painter.drawPixmap(0, 0, overlay.scaled(screenshot.size(), Qt::KeepAspectRatioByExpanding, Qt::FastTransformation));
+        painter.drawPixmap(0, 0, wallpaper.scaled(screen_size, Qt::KeepAspectRatioByExpanding, Qt::FastTransformation));
+    } else {
+        painter.drawPixmap(0, 0, wallpaper);
+    }
+
+    // Draw overlay
+    if (overlay.size() != screen_size) {
+        // Only scales if different sizes
+        painter.drawPixmap(0, 0, overlay.scaled(screen_size, Qt::KeepAspectRatioByExpanding, Qt::FastTransformation));
     } else {
         painter.drawPixmap(0, 0, overlay);
     }
