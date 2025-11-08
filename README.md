@@ -1,6 +1,6 @@
 # Nickel Screensaver
 
-Nickel Screensaver is an addon that brings the transparent screensaver feature to Kobo OS, similar to the one on KOReader.
+Nickel Screensaver is an addon that brings the transparent screensaver feature to Kobo eReaders, similar to the one on KOReader.
 
 <table>
   <tbody>
@@ -79,7 +79,7 @@ The file structure before and after installation:
   </tbody>
 </table>  
 
-From now on, `.adds/screensaver/` is the new location for your screensavers. Don't place them in `.kobo/screensaver` anymore.  
+From now on, `.adds/screensaver/` is the new location for your screensavers. Don't place them in `.kobo/screensaver` anymore (but you still need to keep this folder).  
 
 One more note: don't unlock the device immediately while it's still in the locking procress, as that may cause a crash and reboot.
 
@@ -91,21 +91,22 @@ Yes! Nickel Screensaver won't run when the `.kobo/screensaver` folder is missing
 # Screensaver preparation  
 
 ## Best practices:  
-1. Screensavers must be either PNG or JPG format
+1. Screensavers must be in either PNG or JPG format, with `.png` and `.jpg` extensions (case-sensitive)
 2. A file size under 1 MB is recommended. You can use services like [Squoosh](https://squoosh.app/) to reduce the file size.
 3. To avoid unnecessary slowdown, the screensaver dimensions must exactly match your Kobo eReader's screen resolution (for example, it's must be 1072x1448px for Kobo Clara BW). If it doesn't match, Nickel Screensaver will take extra time to scale the unoptimized image first (it does that every time).
+    > You can check your device's resolution using [comparisontabl.es](https://comparisontabl.es/kobo-e-readers/) (don't forget to swap the dimensions, e.g., 1448x1072 to 1072x1448)
 
 ## Screensaver resources
 
 - Pre-made:
   - [redphx/ereader-screensaver](https://github.com/redphx/ereader-screensaver)
   - [readerbackdrop.com](https://www.readerbackdrop.com/explore?tag=png)
-  - [ereader-related subreddits](https://www.reddit.com/r/ereader+kobo+kindle+koreader/search?q=transparent+screensaver&restrict_sr=on&include_over_18=on&sort=relevance&t=all)
+  - [ereader-related subreddits](https://old.reddit.com/r/ereader+kobo+kindle+koreader/search?q=transparent+screensaver&restrict_sr=on&include_over_18=on&sort=relevance&t=all)
 - Graphic assets:
   - [huaban.com](https://huaban.com)
   - [nicepng.com](https://nicepng.com)
   - [cleanpng.com](https://cleanpng.com)
-  - [stickpng.com](https://wwwstickpng.com)
+  - [stickpng.com](https://www.stickpng.com)
 
 
 # How to disable or uninstall  
