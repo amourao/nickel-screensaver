@@ -4,15 +4,16 @@ Nickel Screensaver is an addon that brings the transparent screensaver feature t
 
 <table>
   <tbody>
-    <td><img height="600" src="https://github.com/user-attachments/assets/a825e165-80fa-4dc0-9e7c-946ebd68e58d"></td>
-    <td><img height="600" src="https://github.com/user-attachments/assets/2c102e2b-d70a-4128-b0a7-2c796f368b5f"></td>
+    <tr>
+      <td>Transparent overlay + book screenshot</td>
+      <td>Transparent overlay + wallpaper</td>
+    </tr>
+    <tr>
+      <td><img height="600" src="https://github.com/user-attachments/assets/a825e165-80fa-4dc0-9e7c-946ebd68e58d"></td>
+      <td><img height="600" src="https://github.com/user-attachments/assets/1f38b2a3-ebf4-45e2-8ecb-66836ad44b4c"></td>
+    </tr>
   </tbody>
 </table>
-
-# How it works
-Nickel Screensaver supports both PNG and JPG screensavers. It only applies the transparent effect when you're reading a book. In other screens, it displays your screensaver on top of a white screen.  
-
-It achieves the "transparent" effect by capturing screenshot of the current screen before the device goes to sleep, then combines that with your transparent screensaver on top. These extra steps add slight delay, so make sure your PNG screensavers are small and optimized. Check the **Screenshot preparation** section for more information.
 
 # Preparation  
 
@@ -44,6 +45,9 @@ Make sure to read the `Preparation` section first. After enabling the Kobo scree
 
 After it installs and reboots, try to lock the screen. If it shows your screensaver, that means it works. If it doesn't, check the **Troubleshooting** section.  
 
+> [!IMPORTANT]
+> If screensaver images appear in your library, see the **Troubleshooting** section for the fix.
+
 The file structure before and after installation:  
 
 <table>
@@ -63,16 +67,24 @@ The file structure before and after installation:
 │  ├─ dog.jpg
 ├─ KoboRoot.tgz
 &nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
 </pre>
       </td>
       <td>
 <pre>
 .adds/
 ├─ screensaver/
+│  ├─ wallpaper/
+│  │  ├─ ...  
+│  ├─ _settings.ini
 │  ├─ cat.png
 │  ├─ dog.jpg
 .kobo/
 ├─ screensaver/
+│  ├─ ...
 </pre>
       </td>
     </tr>
@@ -83,30 +95,71 @@ From now on, `.adds/screensaver/` is the new location for your screensavers. Don
 
 One more note: don't unlock the device immediately while it's still in the locking procress, as that may cause a crash and reboot.
 
+# How to use
+
+<img height="600" src="https://github.com/user-attachments/assets/19bf0d5d-0712-49bd-a012-a964d582af5b" />
+
+Screensaver images created by Nickel Screensaver have three layers:
+- **[1] Image overlay layer:** a random image from the `.adds/screensaver` folder
+- **[2] Color overlay layer:** defined by the `ColorOverlay` and `ColorOverlayAlpha` settings in `.adds/screensaver/_settings.ini`
+- **[3] Screenshot or wallpaper layer:** if you're reading, it's the current page screenshot. If not, it's a random image from `.adds/screensaver/wallpaper`.
+
+Nickel Screensaver only supports PNG and JPG formats. Make sure your images are small and optimized. Check the **Screenshot preparation** section for more information.
+
+### Settings file
+
+You can change some settings by editing the `.adds/screensaver/_settings.ini` file.
+
+```ini
+[Book]
+; Color of the Color overlay layer
+; In HEX format (default: FFFFFF)
+ColorOverlay=ffffff
+; Opacity of the Color overlay layer
+; Value ranges from 0 to 100 (default: 0)
+; Set to 0 to disable the layer
+ColorOverlayAlpha=0
+
+[Wallpaper]
+; Same as Book.ColorOverlay setting
+ColorOverlay=ffffff
+; Same as Book.ColorOverlayAlpha setting
+ColorOverlayAlpha=0
+; Show the Image overlay layer on top of Wallpaper layer or not
+; Value: true/false (default: true)
+ShowImageOverlay=true
+```
+
 # FAQs
 1. **Can I still use NickelMenu to toggle the Screensaver feature?**  
 Yes! Nickel Screensaver won't run when the `.kobo/screensaver` folder is missing.
 
+2. **How many screenshots/screensavers does it keep?**  
+It only keeps one screenshot/screensaver. Whenever you lock the device, it always overwrites the `.kobo/screensaver/nickel-screensaver.jpg` file.
 
-# Screensaver preparation  
+# Screensaver/Wallpaper preparation  
 
 ## Best practices:  
-1. Screensavers must be in either PNG or JPG format, with `.png` and `.jpg` extensions (case-sensitive)
+1. Images must be in either PNG or JPG format, with `.png` and `.jpg` extensions (case-sensitive)
 2. A file size under 1 MB is recommended. You can use services like [Squoosh](https://squoosh.app/) to reduce the file size.
-3. To avoid unnecessary slowdown, the screensaver dimensions must exactly match your Kobo eReader's screen resolution (for example, it's must be 1072x1448px for Kobo Clara BW). If it doesn't match, Nickel Screensaver will take extra time to scale the unoptimized image first (it does that every time).
+3. To avoid unnecessary slowdown, the image dimensions must exactly match your Kobo eReader's screen resolution (for example, it's must be 1072x1448px for Kobo Clara BW). If it doesn't match, Nickel Screensaver will take extra time to scale the unoptimized image first (it does that every time).
     > You can check your device's resolution using [comparisontabl.es](https://comparisontabl.es/kobo-e-readers/) (don't forget to swap the dimensions, e.g., 1448x1072 to 1072x1448)
 
-## Screensaver resources
+## Resources
 
-- Pre-made:
+- Pre-made screensaver/wallpaper:
   - [redphx/ereader-screensaver](https://github.com/redphx/ereader-screensaver)
   - [readerbackdrop.com](https://www.readerbackdrop.com/explore?tag=png)
   - [ereader-related subreddits](https://old.reddit.com/r/ereader+kobo+kindle+koreader/search?q=transparent+screensaver&restrict_sr=on&include_over_18=on&sort=relevance&t=all)
+- Wallpapers:
+  - [unsplash.com](https://unsplash.com/t/wallpapers)
+  - [pexels.com](https://pexels.com)
 - Graphic assets:
   - [huaban.com](https://huaban.com)
   - [nicepng.com](https://nicepng.com)
   - [cleanpng.com](https://cleanpng.com)
   - [stickpng.com](https://www.stickpng.com)
+  - [pngall.com](https://www.pngall.com)
 
 
 # How to disable or uninstall  
@@ -120,7 +173,7 @@ To uninstall, put a file named `uninstall` in the `.adds/screensaver` folder, th
 
 That means there is a bug with Nickel Screensaver. Don't panic, just uninstall it, then report the bug with your device model & firmware version.
 
-### 2. Screensaver images show up in my library  
+### 2. Screensaver images appear in my library  
 
 You need to edit Kobo's setting file to prevent it from scanning hidden folders.  
 
