@@ -143,7 +143,6 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
     QString current_view_name = current_view->objectName();
     // Enable transparent mode when reading
     bool is_reading = current_view_name == QStringLiteral("ReadingView");
-    int display_mode = DISPLAY_MODE::None;
 
     // 1. Ensure folder structure
     screensaver_dir.mkpath("./wallpaper");
@@ -182,46 +181,38 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
     QString overlay_file;
     QString wallpaper_file;
 
-    if (is_reading) {
-        // Check for PNG overlays first
-        QString random_file = pick_random_file(screensaver_dir, QStringList() << "*.png");
-        if (random_file.isEmpty()) {
-            random_file = pick_random_file(screensaver_dir, QStringList() << "*.jpg");
-            if (!random_file.isEmpty()) {
-                display_mode |= DISPLAY_MODE::Wallpaper;
-                wallpaper_file = random_file;
-            }
-        } else {
-            display_mode |= DISPLAY_MODE::Overlay | DISPLAY_MODE::Book;
-            overlay_file = random_file;
-        }
-    } else if (settings.value(WALLPAPER_SHOW_IMAGE_OVERLAY, true).toBool()) {
+    int display_mode = is_reading ? DISPLAY_MODE::Book : DISPLAY_MODE::Wallpaper;
+
+    if (is_reading || settings.value(WALLPAPER_SHOW_IMAGE_OVERLAY, true).toBool()) {
+        // Pick a random PNG/JPG file
         QString random_file = pick_random_file(screensaver_dir, QStringList() << "*.png" << "*.jpg");
         if (!random_file.isEmpty()) {
             if (random_file.endsWith(".png")) {
+                // Add Overlay mode
                 display_mode |= DISPLAY_MODE::Overlay;
                 overlay_file = random_file;
             } else {
-                display_mode |= DISPLAY_MODE::Wallpaper;
+                // To Wallpaper only mode
+                display_mode = DISPLAY_MODE::Wallpaper;
                 wallpaper_file = random_file;
             }
         }
     }
 
-    if ((is_reading && overlay_file.isEmpty()) || (!is_reading && wallpaper_file.isEmpty())) {
-        // Find random wallpaper
+    if ((display_mode & DISPLAY_MODE::Wallpaper) && wallpaper_file.isEmpty()) {
+        // Find a random wallpaper in screensaver/wallpaper/
         QString random_file = pick_random_file(wallpaper_dir, QStringList() << "*.png" << "*.jpg");
-        if (!random_file.isEmpty()) {
-            display_mode |= DISPLAY_MODE::Wallpaper;
-            wallpaper_file = random_file;
-        } else {
+        if (random_file.isEmpty()) {
             if (overlay_file.isEmpty()) {
-                display_mode &= ~DISPLAY_MODE::Wallpaper;
+                // No overlay+wallpaper -> switch to None mode
+                display_mode = DISPLAY_MODE::None;
             } else {
-                display_mode &= ~DISPLAY_MODE::Overlay;
-                display_mode |= DISPLAY_MODE::Wallpaper;
+                // Has overlay but not wallpaper -> Set overlay as wallpaper & switch to Wallpaper only mode
+                display_mode = DISPLAY_MODE::Wallpaper;
                 wallpaper_file = overlay_file;
             }
+        } else {
+            wallpaper_file = random_file;
         }
     }
 
@@ -236,8 +227,8 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
             QFileInfo info(wallpaper_file);
             QFile::copy(wallpaper_file, kobo_screensaver_path + "/nickel-screensaver." + info.suffix());
         }
-        N3PowerWorkflowManager_handleSleep(_this);
-        return;
+
+        return N3PowerWorkflowManager_handleSleep(_this);
     }
 
     // 5. Handle transparent mode
@@ -259,6 +250,10 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
         );
     } else if (display_mode & DISPLAY_MODE::Wallpaper and !wallpaper_file.isEmpty()) {
         wallpaper.load(wallpaper_file);
+
+        if (wallpaper.isNull()) {
+            return N3PowerWorkflowManager_handleSleep(_this);
+        }
     }
 
     // 6. Combine overlay & wallpaper
@@ -266,13 +261,11 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
     QPainter painter(&result);
 
     // Draw wallpaper
-    if (!wallpaper.isNull()) {
-        if (wallpaper.size() != screen_size) {
-            // Only scales if different sizes
-            painter.drawPixmap(0, 0, wallpaper.scaled(screen_size, Qt::KeepAspectRatioByExpanding, Qt::FastTransformation));
-        } else {
-            painter.drawPixmap(0, 0, wallpaper);
-        }
+    if (wallpaper.size() != screen_size) {
+        // Only scales if different sizes
+        painter.drawPixmap(0, 0, wallpaper.scaled(screen_size, Qt::KeepAspectRatioByExpanding, Qt::FastTransformation));
+    } else {
+        painter.drawPixmap(0, 0, wallpaper);
     }
 
     // Draw color overlay layer
