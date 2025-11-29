@@ -1,4 +1,4 @@
-#include "nickelscreensaver.h"
+#include "screensaver.h"
 #include <NickelHook.h>
 
 #include <QtGlobal>
