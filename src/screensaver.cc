@@ -22,7 +22,6 @@ constexpr const char* BOOK_COLOR_OVERLAY            = "Book/ColorOverlay";
 constexpr const char* BOOK_COLOR_OVERLAY_ALPHA      = "Book/ColorOverlayAlpha";
 constexpr const char* WALLPAPER_COLOR_OVERLAY       = "Wallpaper/ColorOverlay";
 constexpr const char* WALLPAPER_COLOR_OVERLAY_ALPHA = "Wallpaper/ColorOverlayAlpha";
-constexpr const char* WALLPAPER_SHOW_IMAGE_OVERLAY  = "Wallpaper/ShowImageOverlay";
 
 enum DISPLAY_MODE {
     None      = 0b00000,
@@ -68,9 +67,6 @@ void save_settings(QSettings &settings) {
     int wallpaper_color_overlay_alpha = qBound(0, settings.value(WALLPAPER_COLOR_OVERLAY_ALPHA, 0).toInt(), 100);
     settings.setValue(WALLPAPER_COLOR_OVERLAY_ALPHA, wallpaper_color_overlay_alpha);
 
-    bool wallpaper_show_image_overlay = settings.value(WALLPAPER_SHOW_IMAGE_OVERLAY, true).toBool();
-    settings.setValue(WALLPAPER_SHOW_IMAGE_OVERLAY, wallpaper_show_image_overlay);
-
     // Save to file
     settings.sync();
 }
@@ -80,7 +76,7 @@ int ns_init() {
     qsrand(QTime::currentTime().msec());
 
     // Setup folder structure
-    QDir("/mnt/onboard/.adds/screensaver").mkpath("./wallpaper");
+    QDir("/mnt/onboard/.adds/screensaver").mkpath("./wallpaper/overlay");
 
     // Setup settings
     QSettings settings("/mnt/onboard/.adds/screensaver/_settings.ini", QSettings::IniFormat);
@@ -199,6 +195,7 @@ void ns_handle_sleep(N3PowerWorkflowManager* self) {
     // 1. Ensure folder structure
     screensaver_dir.mkpath("./wallpaper");
     QDir wallpaper_dir("/mnt/onboard/.adds/screensaver/wallpaper");
+    QDir wallpaper_overlay_dir("/mnt/onboard/.adds/screensaver/wallpaper/overlay");
 
     // 2. Move old overlay_files from .kobo/screensaver to .adds/screensaver
     QStringList exclude = {
@@ -235,19 +232,23 @@ void ns_handle_sleep(N3PowerWorkflowManager* self) {
 
     int display_mode = is_reading ? DISPLAY_MODE::Book : DISPLAY_MODE::Wallpaper;
 
-    if (is_reading || settings.value(WALLPAPER_SHOW_IMAGE_OVERLAY, true).toBool()) {
-        // Pick a random PNG/JPG file
-        QString random_file = pick_random_file(screensaver_dir, QStringList() << "*.png" << "*.jpg");
-        if (!random_file.isEmpty()) {
-            if (random_file.endsWith(".png")) {
-                // Add Overlay mode
-                display_mode |= DISPLAY_MODE::Overlay;
-                overlay_file = random_file;
-            } else {
-                // To Wallpaper only mode
-                display_mode = DISPLAY_MODE::Wallpaper;
-                wallpaper_file = random_file;
-            }
+    // Pick a random overlay file
+    QString random_file;
+    if (is_reading) {
+        random_file = pick_random_file(screensaver_dir, QStringList() << "*.png" << "*.jpg");
+    } else {
+        // Only accept PNG file in wallpaper's overlay folder
+        random_file = pick_random_file(wallpaper_overlay_dir, QStringList() << "*.png");
+    }
+    if (!random_file.isEmpty()) {
+        if (random_file.endsWith(".png")) {
+            // Add Overlay mode
+            display_mode |= DISPLAY_MODE::Overlay;
+            overlay_file = random_file;
+        } else {
+            // To Wallpaper only mode
+            display_mode = DISPLAY_MODE::Wallpaper;
+            wallpaper_file = random_file;
         }
     }
 
