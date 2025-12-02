@@ -14,6 +14,8 @@
 #include <QFileInfo>
 
 typedef void N3PowerWorkflowManager;
+typedef void PowerViewController;
+typedef QWidget BookCoverDragonPowerView;
 
 constexpr const char* BOOK_COLOR_OVERLAY            = "Book/ColorOverlay";
 constexpr const char* BOOK_COLOR_OVERLAY_ALPHA      = "Book/ColorOverlayAlpha";
@@ -28,9 +30,23 @@ enum DISPLAY_MODE {
     Wallpaper = 0b00100,
 };
 
-void (*N3PowerWorkflowManager_handleSleep)(N3PowerWorkflowManager *_this);
-void *(*MainWindowController_sharedInstance)();
-QWidget *(*MainWindowController_currentView)(void *);
+// Black 1x1 PNG file
+unsigned char blank_screensaver[] = {
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x00, 0x00, 0x00, 0x00, 0x3a, 0x7e, 0x9b, 0x55, 0x00, 0x00, 0x00,
+    0x0d, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x01, 0x02, 0x00, 0xfd, 0xff,
+    0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x53, 0x2b, 0x9c, 0x30, 0x00, 0x00,
+    0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+};
+
+void (*N3PowerWorkflowManager_handleSleep)(N3PowerWorkflowManager* self);
+void (*N3PowerWorkflowManager_showSleepView)(N3PowerWorkflowManager* self);
+
+void* (*MainWindowController_sharedInstance)();
+QWidget* (*MainWindowController_currentView)(void*);
+void (*BookCoverDragonPowerView_setInfoPanelVisible)(BookCoverDragonPowerView* self, bool visible);
+void (*FullScreenDragonPowerView_setImage)(QWidget* self, const QImage& img);
 
 struct nh_info nickelscreensaver = {
     .name = "Nickel Screensaver",
@@ -78,6 +94,13 @@ bool ns_uninstall() {
 
 struct nh_hook nickelscreensaverHook[] = {
     {
+        .sym     = "_ZN22N3PowerWorkflowManager13showSleepViewEv", 
+        .sym_new = "ns_show_sleep_view",
+        .lib     = "libnickel.so.1.0.0",
+        .out     = nh_symoutptr(N3PowerWorkflowManager_showSleepView),
+        .desc    = "Show sleep view"
+    },
+    {
         .sym     = "_ZN22N3PowerWorkflowManager11handleSleepEv", 
         .sym_new = "ns_handle_sleep",
         .lib     = "libnickel.so.1.0.0",
@@ -90,12 +113,20 @@ struct nh_hook nickelscreensaverHook[] = {
 struct nh_dlsym nickelscreensaverDlsym[] = {
     {
 		.name = "_ZN20MainWindowController14sharedInstanceEv",
-		.out = nh_symoutptr(MainWindowController_sharedInstance)
+		.out  = nh_symoutptr(MainWindowController_sharedInstance),
 	},
 	{
 		.name = "_ZNK20MainWindowController11currentViewEv",
-		.out = nh_symoutptr(MainWindowController_currentView)
+		.out  = nh_symoutptr(MainWindowController_currentView),
 	},
+    {
+        .name = "_ZN24BookCoverDragonPowerView19setInfoPanelVisibleEb",
+        .out  = nh_symoutptr(BookCoverDragonPowerView_setInfoPanelVisible),
+    },
+    {
+        .name = "_ZN25FullScreenDragonPowerView8setImageERK6QImage",
+        .out  = nh_symoutptr(FullScreenDragonPowerView_setImage),
+    },
 	{0}
 };
 
@@ -107,6 +138,8 @@ NickelHook(
     .uninstall = &ns_uninstall,
 );
 
+QImage screensaver_image;
+
 QString pick_random_file(QDir dir, QStringList filters) {
     QStringList files = dir.entryList(filters, QDir::Files);
     if (files.isEmpty()) {
@@ -117,7 +150,23 @@ QString pick_random_file(QDir dir, QStringList filters) {
     return dir.filePath(files.at(idx));
 }
 
-extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWorkflowManager *_this) {
+bool write_blank_screensaver(const QString &file_path) {
+    QFile file(file_path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+
+    qint64 written = file.write(reinterpret_cast<const char*>(blank_screensaver), sizeof(blank_screensaver));
+    file.close();
+
+    return written == sizeof(blank_screensaver);
+}
+
+extern "C" __attribute__((visibility("default")))
+void ns_handle_sleep(N3PowerWorkflowManager* self) {
+    // Reset data
+    screensaver_image = QImage();
+
     QString screensaver_path   = "/mnt/onboard/.adds/screensaver";
     QString kobo_screensaver_path = "/mnt/onboard/.kobo/screensaver";
     QDir screensaver_dir(screensaver_path);
@@ -125,19 +174,19 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
 
     if (!kobo_screensaver_dir.exists()) {
         // Skip if Kobo's screensaver folder doesn't exist
-        return N3PowerWorkflowManager_handleSleep(_this);
+        return N3PowerWorkflowManager_handleSleep(self);
     }
 
     void *mwc = MainWindowController_sharedInstance();
 	if (!mwc) {
 		nh_log("Invalid MainWindowController");
-		return N3PowerWorkflowManager_handleSleep(_this);
+		return N3PowerWorkflowManager_handleSleep(self);
 	}
 
     QWidget *current_view = MainWindowController_currentView(mwc);
 	if (!current_view) {
 		nh_log("Invalid currentView");
-		return N3PowerWorkflowManager_handleSleep(_this);
+		return N3PowerWorkflowManager_handleSleep(self);
 	}
 
     QString current_view_name = current_view->objectName();
@@ -170,6 +219,9 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
     // 3. Empty .kobo/screensaver folder
     kobo_screensaver_dir.removeRecursively();
     kobo_screensaver_dir.mkpath(".");
+
+    // Write Tiny PNG
+    write_blank_screensaver("/mnt/onboard/.kobo/screensaver/nickel-screensaver.png");
 
     // Get settings
     QSettings settings("/mnt/onboard/.adds/screensaver/_settings.ini", QSettings::IniFormat);
@@ -218,17 +270,16 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
 
     if (display_mode == DISPLAY_MODE::None) {
         // Skip if no files found
-        return N3PowerWorkflowManager_handleSleep(_this);
+        return N3PowerWorkflowManager_handleSleep(self);
     }
 
     // If not overlay mode -> copy the file to .kobo/screensaver
     if (!(display_mode & DISPLAY_MODE::Overlay)) {
         if (!wallpaper_file.isEmpty()) {
-            QFileInfo info(wallpaper_file);
-            QFile::copy(wallpaper_file, kobo_screensaver_path + "/nickel-screensaver." + info.suffix());
+            screensaver_image.load(wallpaper_file);
         }
 
-        return N3PowerWorkflowManager_handleSleep(_this);
+        return N3PowerWorkflowManager_handleSleep(self);
     }
 
     // 5. Handle transparent mode
@@ -252,7 +303,7 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
         wallpaper.load(wallpaper_file);
 
         if (wallpaper.isNull()) {
-            return N3PowerWorkflowManager_handleSleep(_this);
+            return N3PowerWorkflowManager_handleSleep(self);
         }
     }
 
@@ -297,10 +348,23 @@ extern "C" __attribute__((visibility("default"))) void ns_handle_sleep(N3PowerWo
     painter.end();
 
     // 7. Save screensaver
-    result.save(kobo_screensaver_path + "/nickel-screensaver.jpg", "JPEG", 100);
+    screensaver_image = result;
 
     // 8. Done
-    N3PowerWorkflowManager_handleSleep(_this);
+    N3PowerWorkflowManager_handleSleep(self);
     // nh_log("Current view: %s", current_view_name.toStdString().c_str());
     // nh_dump_log();
+}
+
+extern "C" __attribute__((visibility("default")))
+void ns_show_sleep_view(N3PowerWorkflowManager* self) {
+    N3PowerWorkflowManager_showSleepView(self);
+
+    void *mwc = MainWindowController_sharedInstance();
+    QWidget *current_view = MainWindowController_currentView(mwc);
+
+    // Replace current image with the generated screensaver
+    FullScreenDragonPowerView_setImage(current_view, screensaver_image);
+
+    // BookCoverDragonPowerView_setInfoPanelVisible(current_view, true);
 }
