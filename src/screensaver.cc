@@ -76,7 +76,14 @@ int ns_init() {
     qsrand(QTime::currentTime().msec());
 
     // Setup folder structure
+    bool has_wallpaper_dir = QDir("/mnt/onboard/.adds/screensaver/wallpaper").exists();
     QDir("/mnt/onboard/.adds/screensaver").mkpath("./wallpaper/overlay");
+    if (!has_wallpaper_dir) {
+        // Create "cover" file when "wallpaper" folder doesn't exist
+        QFile cover("/mnt/onboard/.adds/screensaver/wallpaper/cover");
+        cover.open(QIODevice::WriteOnly);
+        cover.close();
+    }
 
     // Setup settings
     QSettings settings("/mnt/onboard/.adds/screensaver/_settings.ini", QSettings::IniFormat);
