@@ -78,13 +78,13 @@ The file structure before and after installation:
 .adds/
 ├─ screensaver/
 │  ├─ wallpaper/
-│  │  ├─ ...  
+│  │  ├─ overlay/
+│  │  ├─ cover
 │  ├─ _settings.ini
 │  ├─ cat.png
 │  ├─ dog.jpg
 .kobo/
 ├─ screensaver/
-│  ├─ ...
 </pre>
       </td>
     </tr>
@@ -97,12 +97,28 @@ One more note: don't unlock the device immediately while it's still in the locki
 
 # How to use
 
-<img height="600" src="https://github.com/user-attachments/assets/19bf0d5d-0712-49bd-a012-a964d582af5b" />
+<table>
+  <tbody>
+    <tr>
+      <td><img height="600" src="https://github.com/user-attachments/assets/19bf0d5d-0712-49bd-a012-a964d582af5b" /></td>
+      <td>
+        Screensaver images created by Nickel Screensaver have three layers:
+        <br><br>
+        <ul>
+          <li>[1] Overlay layer</li>
+          <li>[2] Color layer (defined in the <b>_settings.ini</b> file)</li>
+          <li>[3] Image layer</li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-Screensaver images created by Nickel Screensaver have three layers:
-- **[1] Image overlay layer:** a random image from the `.adds/screensaver` folder
-- **[2] Color overlay layer:** defined by the `ColorOverlay` and `ColorOverlayAlpha` settings in `.adds/screensaver/_settings.ini`
-- **[3] Screenshot or wallpaper layer:** if you're reading, it's the current page screenshot. If not, it's a random image from `.adds/screensaver/wallpaper`.
+|     | While reading | Other screens |
+|-----|---------------|---------------|
+| [1] | a random image in `.adds/screensaver` | a random image in `.adds/screensaver/wallpaper/overlay` |
+| [2] | `Book/ColorOverlay` and `Book/ColorOverlayAlpha` settings | `Wallpaper/ColorOverlay` and `Wallpaper/ColorOverlayAlpha` settings |
+| [3] | current page screenshot | a random image in `.adds/screensaver/wallpaper` |
 
 Nickel Screensaver only supports PNG and JPG formats. Make sure your images are small and optimized. Check the **Screenshot preparation** section for more information.
 
@@ -113,7 +129,7 @@ You can change some settings by editing the `.adds/screensaver/_settings.ini` fi
 ```ini
 [Book]
 ; Color of the Color overlay layer
-; In HEX format (default: FFFFFF)
+; In Hex format (default: FFFFFF)
 ColorOverlay=ffffff
 ; Opacity of the Color overlay layer
 ; Value ranges from 0 to 100 (default: 0)
@@ -125,9 +141,6 @@ ColorOverlayAlpha=0
 ColorOverlay=ffffff
 ; Same as Book.ColorOverlayAlpha setting
 ColorOverlayAlpha=0
-; Show the Image overlay layer on top of Wallpaper layer or not
-; Value: true/false (default: true)
-ShowImageOverlay=true
 ```
 
 # FAQs
@@ -135,7 +148,8 @@ ShowImageOverlay=true
 Yes! Nickel Screensaver won't run when the `.kobo/screensaver` folder is missing.
 
 2. **How many screenshots/screensavers does it keep?**  
-It only keeps one screenshot/screensaver. Whenever you lock the device, it always overwrites the `.kobo/screensaver/nickel-screensaver.jpg` file.
+~~It only keeps one screenshot/screensaver. Whenever you lock the device, it always overwrites the `.kobo/screensaver/nickel-screensaver.jpg` file.~~  
+Since version 1.2, Nickel Screensaver no longer writes screensavers into disk. Now it displays them directly from memory.
 
 # Screensaver/Wallpaper preparation  
 
