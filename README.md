@@ -6,10 +6,12 @@ Nickel Screensaver is an addon that brings the transparent screensaver feature t
   <tbody>
     <tr>
       <td>Transparent overlay + book screenshot</td>
+      <td>Transparent overlay + book cover</td>
       <td>Transparent overlay + wallpaper</td>
     </tr>
     <tr>
-      <td><img height="600" src="https://github.com/user-attachments/assets/a825e165-80fa-4dc0-9e7c-946ebd68e58d"></td>
+      <td><img height="600" src="https://github.com/user-attachments/assets/5c243395-efae-4d15-9b3c-3a092723015a"></td>
+      <td><img height="600" src="https://github.com/user-attachments/assets/f1470098-1210-4dc3-b8ab-6ef31f875f81"></td>
       <td><img height="600" src="https://github.com/user-attachments/assets/1f38b2a3-ebf4-45e2-8ecb-66836ad44b4c"></td>
     </tr>
   </tbody>
